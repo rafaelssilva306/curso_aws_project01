@@ -1,0 +1,65 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.2.0-SNAPSHOT'
+	id 'io.spring.dependency-management' version '1.1.3'
+	id 'com.palantir.docker' version '0.35.0'
+}
+
+//TODO - esse valor deve ser o mesmo do seu Docker Hub ID
+group = 'siecola'
+//TODO - aqui é o lugar onde se configura a tag da imagem Docker a ser gerada
+version = '1.0.0'
+
+java {
+	sourceCompatibility = '17'
+}
+
+repositories {
+	mavenCentral()
+	maven { url 'https://repo.spring.io/milestone' }
+	maven { url 'https://repo.spring.io/snapshot' }
+}
+
+//IMPORTANTE - adicione as bibliotecas somente quando solicitadas durante o curso. Aqui estão as versões corretas a serem utlilizadas, para sua referência.
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework:spring-jms:5.2.9.RELEASE'
+
+	//Bibliotecas utilizadas somente para no projeto aws_project01
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.mariadb.jdbc:mariadb-java-client:3.2.0'
+	implementation 'com.amazonaws:aws-java-sdk-sns:1.12.13'
+	implementation 'com.amazonaws:aws-java-sdk-s3:1.12.13'
+
+
+	//Bibliotecas utilizadas somente para no projeto aws_project02
+	implementation 'com.amazonaws:aws-java-sdk-dynamodb:1.12.13'
+	implementation 'io.github.boostchicken:spring-data-dynamodb:5.2.1'
+
+	implementation 'com.amazonaws:aws-java-sdk-sqs:1.12.13'
+	implementation 'com.amazonaws:amazon-sqs-java-messaging-lib:1.0.8'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.register('unpack', Copy) {
+	dependsOn bootJar
+	from(zipTree(tasks.bootJar.outputs.files.singleFile))
+	into("build/dependency")
+}
+
+
+//Já está preparado para gerar imagem no formato linux/amd64, inclusive em computadores com processadores ARM, como os novos Macbook.
+//A variável project.name deve ser configurada no arquivo settings.gradle
+docker {
+	name "${project.group}/${project.name}"
+	buildx true
+	platform 'linux/amd64'
+	copySpec.from(tasks.unpack.outputs).into('dependency')
+	buildArgs(['DEPENDENCY' : "dependency"])
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
